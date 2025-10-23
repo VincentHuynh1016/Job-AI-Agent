@@ -1,4 +1,5 @@
 """Agents for analyzing LinkedIn profiles and suggesting jobs."""
+
 import os
 import logging  # Logging modules for logging info
 import asyncio  # For asynchronous programming
@@ -59,8 +60,8 @@ def job_suggestion_agent() -> Agent:
     client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     job_suggesting_agent = Agent(
         name="Job Suggestions",
-        instructions=f""" You are a domain classifier that identifies the 
-        primary profession domain from a LinkedIn profile. 
+        instructions=f"""You are a domain classifier that identifies the primary profession domain from a LinkedIn profile. 
+        IMPORTANT: Focus on ENTRY-LEVEL roles suitable for recent graduates. Roles requiring 0-2 years of experience
         """,
         model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
@@ -142,31 +143,41 @@ def summary_agent() -> Agent:
 
 # I was thinking if I were to make this a flask it would be a GET request
 async def run_analysist(mcp_server: MCPServer, linkedin_url: str):
-    """Run the entire analysis pipeline"""  
+    """Run the entire analysis pipeline"""
 
     # Start linkedin profile analysis
     logger.info("Running the LinkedIN profile analysis")
-    linkedIn_results = await Runner.run(starting_agent=linkedIn_Agent(mcp_server), input=linkedin_url)
+    linkedIn_results = await Runner.run(
+        starting_agent=linkedIn_Agent(mcp_server), input=linkedin_url
+    )
     logger.info("Linkedin profile analysis has been completed")
 
     # Get job suggestions
     logger.info("Getting Job Suggestions")
-    suggestion_results = await Runner.run(starting_agent=job_suggestion_agent(), input=linkedIn_results.final_output)
+    suggestion_results = await Runner.run(
+        starting_agent=job_suggestion_agent(), input=linkedIn_results.final_output
+    )
     logger.info("Job suggestions completed")
 
     # Generate URL's
     logger.info("Generating Job link")
-    job_link_results = await Runner.run(starting_agent=url_generator_agent(), input=suggestion_results.final_output)
+    job_link_results = await Runner.run(
+        starting_agent=url_generator_agent(), input=suggestion_results.final_output
+    )
     logger.info("Job link generation completed")
 
     # Get job matches
     logger.info("Getting Job matches")
-    job_search_results = await Runner.run(starting_agent=job_search_agent(mcp_server), input=job_link_results.final_output)
+    job_search_results = await Runner.run(
+        starting_agent=job_search_agent(mcp_server), input=job_link_results.final_output
+    )
     logger.info("Job search completed")
 
     # Parse URLs to get direct job links
     logger.info("Parsing Job URLs")
-    job_search_results = await Runner.run(starting_agent=url_parser_agent(), input=job_search_results.final_output)
+    job_search_results = await Runner.run(
+        starting_agent=url_parser_agent(), input=job_search_results.final_output
+    )
     logger.info("URL parsing completed")
 
     # Create a single input for the summary agent
@@ -182,8 +193,10 @@ async def run_analysist(mcp_server: MCPServer, linkedin_url: str):
 
     Please analyze the above information and create a comprehensive career analysis report in markdown format."""
 
-    #Get final summary with a single call
-    summary_result = await Runner.run(starting_agent=summary_agent(), input=summary_input)
+    # Get final summary with a single call
+    summary_result = await Runner.run(
+        starting_agent=summary_agent(), input=summary_input
+    )
     logger.info("Summary generation completed")
 
     return summary_result.final_output
