@@ -17,25 +17,27 @@ async def initialize_mcp_server():
 
     try:
         server = MCPServerStdio(
-            cache_tools_list = False,
+            cache_tools_list=False,
             params={
-                "command":"npx",
-                "args": ["-y", "@brightdata/mcp"], 
+                "command": "npx",
+                "args": ["-y", "@brightdata/mcp"],
                 "env": {
                     "API_TOKEN": os.environ["BRIGHT_DATA_API_KEY"],
-                    "WEB_UNLOCKER_ZONE": os.environ["WEB_UNLOCKER_ZONE"]
-                }
-            }
+                    "WEB_UNLOCKER_ZONE": os.environ["WEB_UNLOCKER_ZONE"],
+                    "BROWSER_AUTH": os.environ["BROWSER_AUTH"],
+                },
+            },
+            client_session_timeout_seconds=120,
         )
         # Starting the MCP server process
-        await asyncio.wait_for(server.__aenter__(), timeout=10)
+        await asyncio.wait_for(server.__aenter__(), timeout=60)
         _mcp_server = server
         return server
 
     except Exception as e:
         logger.error(f"Error when initializing MCP server: {e}")
         return None
-    
+
 """
 This function does a few important things: 
 1. Prevents re-iniitalizatoin if the server is already up
@@ -43,11 +45,11 @@ This function does a few important things:
 3. Handles timeout and logs any failures gracefully
 """
 
-#Helper functions
+# Helper functions
 async def wait_for_initialization():
     """Wait for MCP initialization to complete."""
     return await initialize_mcp_server() is not None
 
 def get_mcp_server():
-    "Get the current MCP server instance."""
+    """Get the current MCP server instance."""
     return _mcp_server

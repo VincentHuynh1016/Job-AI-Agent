@@ -28,7 +28,7 @@ def linkedIn_Agent(mcp_server: MCPServer) -> Agent:
     """
     set_tracing_disabled(disabled=True)
     # Initialize the OpenAI client
-    client = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
     linkedIn_agent = Agent(
         name="LinkedIn Profile Analyzer",
@@ -44,8 +44,8 @@ def linkedIn_Agent(mcp_server: MCPServer) -> Agent:
 
         Provide a structured analysis with bullet points and a brief executive summary.
         """,
-        mcp_server=[mcp_server],
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        mcp_servers=[mcp_server],
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
     return linkedIn_agent
 
@@ -56,13 +56,13 @@ def job_suggestion_agent() -> Agent:
     Based on the Linkedin analysis it will suggest the preferred job
     """
     set_tracing_disabled(disabled=True)
-    client = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     job_suggesting_agent = Agent(
         name="Job Suggestions",
         instructions=f""" You are a domain classifier that identifies the 
         primary profession domain from a LinkedIn profile. 
         """,
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
     return job_suggesting_agent
 
@@ -75,12 +75,12 @@ def url_generator_agent() -> Agent:
     companies and roles.
     """
     set_tracing_disabled(disabled=True)
-    client = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     url_generator_agent = Agent(
         name="URL Generator",
         instructions=f"""You are a URL generator that creates Y Combinator job board URLs based on domains.
         """,
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
 
     return url_generator_agent
@@ -93,13 +93,13 @@ def job_search_agent(mcp_server: MCPServer) -> Agent:
     Y Combinator's job board.
     """
     set_tracing_disabled(disabled=True)
-    client = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     job_searching_agent = Agent(
         name="Job Finder",
         instructions=f""" You are a job finder that extracts job listings from Y Combinator's job board.
         """,
         mcp_servers=[mcp_server],
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
 
     return job_searching_agent
@@ -112,12 +112,12 @@ def url_parser_agent() -> Agent:
     up and simplifies those URL's
     """
     set_tracing_disabled(disabled=True)
-    client = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     url_parseing_agent = Agent(
         name="URL Parser",
         instructions=f""" You are a URL parser that transforms Y Combinator authentication URLs into direct job URLS.
         """,
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
     return url_parseing_agent
 
@@ -129,18 +129,18 @@ def summary_agent() -> Agent:
     results into a clean markdown format
     """
     set_tracing_disabled(disabled=True)
-    client  = AsyncOpenAI(OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     summarization_agent = Agent(
         name="Summary Agent",
         instructions=f"""You are a summary agent that creates comprehensive career analysis reports.
 
         Ensure your response is well-formatted markdown that can be directly displayed.""",
-        model=OpenAIChatCompletionsModel(model="gpt-5", openai_client=client),
+        model=OpenAIChatCompletionsModel(model="gpt-4o", openai_client=client),
     )
     return summarization_agent
 
 
-#I was thinking if I were to make this a flask it would be a GET request
+# I was thinking if I were to make this a flask it would be a GET request
 async def run_analysist(mcp_server: MCPServer, linkedin_url: str):
     """Run the entire analysis pipeline"""  
 
@@ -151,22 +151,22 @@ async def run_analysist(mcp_server: MCPServer, linkedin_url: str):
 
     # Get job suggestions
     logger.info("Getting Job Suggestions")
-    suggestion_results = await Runner.run(starting_agent=job_suggestion_agent(), input=linkedIn_results)
+    suggestion_results = await Runner.run(starting_agent=job_suggestion_agent(), input=linkedIn_results.final_output)
     logger.info("Job suggestions completed")
 
     # Generate URL's
     logger.info("Generating Job link")
-    job_link_results = await Runner.run(starting_agent=url_generator_agent(), input=suggestion_results)
+    job_link_results = await Runner.run(starting_agent=url_generator_agent(), input=suggestion_results.final_output)
     logger.info("Job link generation completed")
 
     # Get job matches
     logger.info("Getting Job matches")
-    job_search_results = await Runner.run(starting_agent=job_search_agent(mcp_server), input=job_link_results)
+    job_search_results = await Runner.run(starting_agent=job_search_agent(mcp_server), input=job_link_results.final_output)
     logger.info("Job search completed")
 
     # Parse URLs to get direct job links
     logger.info("Parsing Job URLs")
-    job_search_results = await Runner.run(starting_agent=url_parser_agent(), input=job_search_results)
+    job_search_results = await Runner.run(starting_agent=url_parser_agent(), input=job_search_results.final_output)
     logger.info("URL parsing completed")
 
     # Create a single input for the summary agent
@@ -187,6 +187,3 @@ async def run_analysist(mcp_server: MCPServer, linkedin_url: str):
     logger.info("Summary generation completed")
 
     return summary_result.final_output
-
-
-
